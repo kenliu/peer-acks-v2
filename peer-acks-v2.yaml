@@ -1,0 +1,141 @@
+# This file contains a deployment and service configuration for a
+# generic, HTTP2-based backend. The use of HTTP2 also implies the use of
+# TLS between the load-balancer and the backend. This basic
+# configuration also works equally well for HTTPS-1.1 or HTTP backends,
+# there are callouts below for deletions to make.
+
+# This deployment object defines a pod template and a replica count.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # What's with labels vs names?  The name is how the configuration
+  # object is identified by k8s.  The labels are arbitrary key-value
+  # pairs, which are used for categorization and selection.  Often,
+  # there will be both "app" and "env" keys, or "canary: true" labels.
+  labels:
+    app: peer-acks-v2
+  name: peer-acks-v2
+spec:
+  # This combination of replicas and selector is really saying
+  # "ensure that there are this many pods that match the given label selector".
+  replicas: 3
+  selector:
+    matchLabels:
+      app: peer-acks-v2
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: peer-acks-v2
+    spec:
+      containers:
+        - image: gcr.io/cockroach-dev-inf/cockroachlabs/peer-acks-v2:e014f1e
+          imagePullPolicy: Always
+          name: peer-acks-v2
+          ports:
+            - containerPort: 8080
+              # This name is arbitrary and should be used instead of
+              # port numbers when referring to the pod.
+              name: http
+              protocol: TCP
+          # A Kubernetes Secret is a key-value map that can be used to
+          # populate environment variables or it can be mounted as
+          # though it were a collection of files. Here, we're going to
+          # say that all keys defined in this secret should be mapped as
+          # environment variables. It's possible, if somewhat tedious,
+          # to do this on a variable-by-variable basis, too.
+          #
+          # If the executable in the container is configured via
+          # command-line flags, these environment variables can be used
+          # in the usual way in an args block.
+#          envFrom:
+#            - secretRef:
+#                name: peer-acks-v2-env-vars
+          # Liveness determine if the container should be terminated.
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: http
+              # Remove this for an HTTP-only backend.
+              #scheme: HTTPS
+          # Readiness controls when the container is available to serve
+          # network requests. For many services, this will be the same
+          # query as above. If the backend needs to establish many
+          # remote connections or transfer data before actually being
+          # able to serve, the use of distinct liveness and readiness
+          # probes allows the "failure to launch" case to be detected.
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /?ready=1
+              port: http
+              # Remove this for an HTTP-only backend.
+              #scheme: HTTPS
+          resources:
+            # The requested amount is used to place the pod on a
+            # particular machine.
+            requests:
+              cpu: "50m"
+              memory: "32Mi"
+            # These are hard limits that will result in the termination
+            # of the container.
+            limits:
+              cpu: "100m"
+              memory: "64Mi"
+          # See discussion immediately below.
+#          volumeMounts:
+#            - mountPath: "/secrets"
+#              name: secrets
+      terminationGracePeriodSeconds: 30
+      # This shows the other way of getting at the contents of a Secret.
+      # We'll create a named volume that gets mapped to the secret. The
+      # keys in the secret are used as filenames.
+#      volumes:
+#        - name: secrets
+#          secret:
+#            secretName: peer-acks-v2-env-vars
+---
+# This service object creates a virtual IP address within the cluster
+# that will steer traffic to pods that match a label selector.
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    # Remove this next line if you don't want an OAuth proxy for corp
+    # apps. Otherwise, the first time you load the page, you'll see a
+    # redirect_uri_mismatch error message that will have a link to the
+    # crdb-dev oauth proxy configuration page.  Follow that, and duplicate
+    # one of the existing URIs for your desired hostname.
+    beta.cloud.google.com/backend-config: '{"default":"crdb-dev-iap-config"}'
+    # This line controls which protocol the load balancer will use when
+    # connecting to the app. This default app supports HTTP2.
+    # Other valid choices are HTTPS or to delete this line for HTTP.
+#    cloud.google.com/app-protocols: '{"https":"HTTP2"}'
+  labels:
+    app: peer-acks-v2
+  name: peer-acks-v2
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: https
+  # This label selector matches against pod labels. Image a case where
+  # you have three replicas with a "branch:stable" label and one  with a
+  # "branch:canary". Since all four would have an "app:myapp" label, the
+  # service will steer traffic between all instances. This requires, of
+  # course, that the backend can operate in a mixed-version deployment.
+  selector:
+    app: peer-acks-v2
+    # This is also a "NodePort" service (as opposed to "LoadBalancer"),
+    # which makes every machine in the k8s cluster forward network
+    # traffic from an arbitrarily-chosen port number on the host
+    # machine's "real" IP address. This is ultimately how the Ingress
+    # controller routes HTTP requests into the cluster.
+  type: NodePort

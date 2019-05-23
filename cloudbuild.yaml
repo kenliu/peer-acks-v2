@@ -1,0 +1,19 @@
+# This Cloud Build configuration is set up to be driven by an automatic
+# build trigger. The branch and sha will be populated automatically.
+#
+# This build can be kicked off locally:
+#
+# BRANCH=$(git symbolic-ref --short HEAD)
+# SHA=$(git rev-parse --short HEAD)
+# gcloud builds submit --substitutions=BRANCH_NAME=$BRANCH,SHORT_SHA=$SHA
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: [ 'build',
+          '-t', 'gcr.io/$PROJECT_ID/cockroachlabs/peer-acks-v2:$BRANCH_NAME',
+          '-t', 'gcr.io/$PROJECT_ID/cockroachlabs/peer-acks-v2:$SHORT_SHA',
+          '.'
+  ]
+images:
+- 'gcr.io/$PROJECT_ID/cockroachlabs/peer-acks-v2:$BRANCH_NAME'
+- 'gcr.io/$PROJECT_ID/cockroachlabs/peer-acks-v2:$SHORT_SHA'
+
