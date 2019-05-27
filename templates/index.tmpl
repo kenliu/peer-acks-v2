@@ -7,14 +7,14 @@
 
         <!-- Bootstrap CSS -->
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+        <title>Peer-acks: Send an ack</title>
     </head>
     <body>
         <div class="container">
             <h1>Give an Ack</h1>
-            <form action="/ack" method="post" accept-charset="UTF-8">
-                <div>
-                    <textarea name="acks" rows="10" cols="80"></textarea>
-                </div>
+            <form action="/acks" method="POST" accept-charset="UTF-8">
+                <textarea name="message" rows="10" cols="80"></textarea>
                 <button type="submit" class="btn btn-primary">send ack!</button>
             </form>
         </div>
