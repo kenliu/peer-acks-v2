@@ -60,7 +60,7 @@ func main() {
 func createStaticRoutes(router *gin.Engine) {
 	// create static routes
 	router.StaticFile("/favicon.ico", "./resources/favicon.ico")
-	router.StaticFile("/radiator.html", "./templates/radiator.html")
+	router.StaticFile("/radiator", "./templates/radiator.html")
 	router.Static("/resources", "./resources")
 
 	router.LoadHTMLGlob("templates/*")
@@ -71,21 +71,23 @@ func deleteAck(c *gin.Context) {
 }
 
 func fetchAcks(db *sql.DB) gin.H {
-	var (
-		message string
-	)
+	var messages []string
 
-	rows, err := db.Query("select message from acks order by updated_at desc")
+	rows, err := db.Query("select message from acks order by updated_at desc") //TODO add date range of previous week
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rows.Close()
+
+	var message string
+	log.Println("fetching acks:")
 	for rows.Next() {
 		err := rows.Scan(&message)
 		if err != nil {
 			log.Fatal(err)
 		}
 		log.Println(message)
+		messages = append(messages, message)
 	}
 	err = rows.Err()
 	if err != nil {
@@ -93,6 +95,6 @@ func fetchAcks(db *sql.DB) gin.H {
 	}
 
 	return gin.H{
-		"acks": []string{message, "shout out to a", "shout out to b", "shout out to c"}, //hard coded for now
+		"acks": messages,
 	}
 }
