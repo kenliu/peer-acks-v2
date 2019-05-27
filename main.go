@@ -40,6 +40,8 @@ func main() {
 		//TODO handle case where msg is empty
 		//TODO trim spaces
 		db.Exec("INSERT INTO acks (message, updated_at) values ($1, current_timestamp)", message)
+
+		c.HTML(http.StatusOK, "ack_submitted.tmpl", fetchAcks(db))
 	})
 
 	router.DELETE("/acks", func(c *gin.Context) {
