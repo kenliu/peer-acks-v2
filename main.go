@@ -2,9 +2,12 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
+	"os"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -26,37 +29,42 @@ func main() {
 	defer db.Close()
 
 	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.tmpl", fetchAcks(db))
+		c.HTML(http.StatusOK, "index.tmpl", fetchAcks(db, getUserEmail(c)))
 	})
 
 	router.GET("/acks", func(c *gin.Context) {
-		c.JSON(http.StatusOK, fetchAcks(db))
+		c.JSON(http.StatusOK, fetchAcks(db, getUserEmail(c)))
 	})
 
-	router.POST("/acks", func(c *gin.Context) {
-		message := c.PostForm("message")
+	router.POST("/acks", func(ctx *gin.Context) {
+		message := ctx.PostForm("message")
 		log.Println(message)
 
 		//TODO handle case where msg is empty
-		//TODO trim spaces
-		db.Exec("INSERT INTO acks (message, updated_at) values ($1, current_timestamp)", message)
+		//TODO trim spaces in message
+		query := "INSERT INTO acks (msg, sender_email, updated_at) values ($1, $2, current_timestamp)"
+		_, err := db.Exec(query, message, getUserEmail(ctx))
+		if err != nil {
+			log.Fatal(err) //TODO handle this better
+		}
 
-		c.HTML(http.StatusOK, "ack_submitted.tmpl", fetchAcks(db))
+		ctx.HTML(http.StatusOK, "ack_submitted.tmpl", fetchAcks(db, getUserEmail(ctx)))
 	})
 
-	router.DELETE("/acks", func(c *gin.Context) {
-		//TODO
-	})
+	//TODO implement delete
+	//router.DELETE("/acks/:id", func(c *gin.Context) {
+	//})
 
-	// my acks
+	// my acks page
 	router.GET("/myacks", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "myacks.tmpl", fetchAcks(db))
+		c.HTML(http.StatusOK, "myacks.tmpl", fetchAcks(db, getUserEmail(c)))
 	})
 
 	// report
 	router.GET("/report")
 
-	router.Run(":8888") // listen and serve on 0.0.0.0:8080
+	serverPort := "8888" //TODO read from ENV
+	router.Run(":" + serverPort)
 }
 
 func createStaticRoutes(router *gin.Engine) {
@@ -68,14 +76,37 @@ func createStaticRoutes(router *gin.Engine) {
 	router.LoadHTMLGlob("templates/*")
 }
 
-func deleteAck(c *gin.Context) {
-	//TODO delete ack from DB
+// GCP IAP sets this header for logged in users
+const GoogleIapUserHeader = "x-goog-authenticated-user-email"
+
+func getUserEmail(c *gin.Context) string {
+	var email string
+
+	//check to see if we're running in a local environment and set a dummy user email
+	if os.Getenv("ENVIRONMENT") == "development" {
+		email = "test.email@cockroachlabs.com"
+	} else if c.GetHeader(GoogleIapUserHeader) != "" {
+		email = c.GetHeader(GoogleIapUserHeader)
+	}
+	return email
 }
 
-func fetchAcks(db *sql.DB) gin.H {
+func fetchAcks(db *sql.DB, senderEmail string) gin.H {
 	var messages []string
 
-	rows, err := db.Query("select message from acks order by updated_at desc") //TODO add date range of previous week
+	curDateString := fmt.Sprintf(time.Now().Format("2006-01-02"))
+
+	var rows *sql.Rows
+	var err error
+	var query string
+	if senderEmail == "" {
+		query = "select msg from acks where created_at > ($1 - 7) order by updated_at desc"
+		rows, err = db.Query(query, curDateString)
+	} else {
+		query = "select msg from acks where sender_email = $2 and created_at > ('$1' - 7) order by updated_at desc"
+		rows, err = db.Query(query, curDateString, senderEmail)
+	}
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -88,6 +119,7 @@ func fetchAcks(db *sql.DB) gin.H {
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		log.Println(message)
 		messages = append(messages, message)
 	}
@@ -96,7 +128,5 @@ func fetchAcks(db *sql.DB) gin.H {
 		log.Fatal(err)
 	}
 
-	return gin.H{
-		"acks": messages,
-	}
+	return gin.H{"acks": messages}
 }
