@@ -60,8 +60,10 @@ func main() {
 		c.HTML(http.StatusOK, "myacks.tmpl", fetchAcks(db, getUserEmail(c)))
 	})
 
-	// report
-	router.GET("/report")
+	// report page
+	router.GET("/report", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "report.tmpl", fetchAcks(db, ""))
+	})
 
 	serverPort := "8888" //TODO read from ENV
 	router.Run(":" + serverPort)
@@ -93,18 +95,20 @@ func getUserEmail(c *gin.Context) string {
 
 func fetchAcks(db *sql.DB, senderEmail string) gin.H {
 	var messages []string
-
-	curDateString := fmt.Sprintf(time.Now().Format("2006-01-02"))
-
 	var rows *sql.Rows
 	var err error
 	var query string
+
+	//FIXME figure out how to properly pass timestamps to db.Query instead of concatenating a string here
+	curDateString := fmt.Sprintf(time.Now().Format("2006-01-02"))
 	if senderEmail == "" {
-		query = "select msg from acks where created_at > ($1 - 7) order by updated_at desc"
-		rows, err = db.Query(query, curDateString)
+		log.Println("fetching all acks, last 7 days")
+		query = "select msg from acks where created_at > ('" + curDateString + "' - 7) order by updated_at desc"
+		rows, err = db.Query(query)
 	} else {
-		query = "select msg from acks where sender_email = $2 and created_at > ('$1' - 7) order by updated_at desc"
-		rows, err = db.Query(query, curDateString, senderEmail)
+		log.Println("fetching acks by user email: " + senderEmail)
+		query = "select msg from acks where sender_email = $1 and created_at > ('" + curDateString + "' - 7) order by updated_at desc"
+		rows, err = db.Query(query, senderEmail)
 	}
 
 	if err != nil {
