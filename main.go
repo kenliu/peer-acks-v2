@@ -13,20 +13,17 @@ import (
 )
 
 func main() {
-	router := gin.Default()
-
-	createStaticRoutes(router)
-
 	// initialize the DB
-	//TODO fix this to point to correct user and db
-	//datasource := "postgresql://maxroach@localhost:26257/bank?ssl=true&sslmode=require&sslrootcert=certs/ca.crt&sslkey=certs/client.maxroach.key&sslcert=certs/client.maxroach.crt""
-	datasource := "postgresql://maxroach@localhost:26257/peeracks?sslmode=disable"
-
+	datasource := os.Getenv("DATASOURCE")
 	db, err := sql.Open("postgres", datasource)
 	if err != nil {
 		log.Fatal("error connecting to the database: ", err)
 	}
 	defer db.Close()
+
+	// set up request handlers
+	router := gin.Default()
+	createStaticRoutes(router)
 
 	router.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.tmpl", fetchAcks(db, getUserEmail(c)))
@@ -81,18 +78,22 @@ func createStaticRoutes(router *gin.Engine) {
 // GCP IAP sets this header for logged in users
 const GoogleIapUserHeader = "x-goog-authenticated-user-email"
 
+// email address only used for local testing (not running in IAP environment)
+const DevEmailAddress = "dev.email@cockroachlabs.com"
+
 func getUserEmail(c *gin.Context) string {
 	var email string
 
 	//check to see if we're running in a local environment and set a dummy user email
 	if os.Getenv("ENVIRONMENT") == "development" {
-		email = "test.email@cockroachlabs.com"
+		email = DevEmailAddress
 	} else if c.GetHeader(GoogleIapUserHeader) != "" {
 		email = c.GetHeader(GoogleIapUserHeader)
 	}
 	return email
 }
 
+// empty senderEmail string queries for all acks
 func fetchAcks(db *sql.DB, senderEmail string) gin.H {
 	var messages []string
 	var rows *sql.Rows
