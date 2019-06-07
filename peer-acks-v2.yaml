@@ -42,6 +42,13 @@ spec:
               # port numbers when referring to the pod.
               name: http
               protocol: TCP
+          env:
+            - name: DATASOURCE
+              valueFrom:
+                secretKeyRef:
+                  key: connstring
+                  name: peer-acks-v2-secrets
+
           # A Kubernetes Secret is a key-value map that can be used to
           # populate environment variables or it can be mounted as
           # though it were a collection of files. Here, we're going to
@@ -87,18 +94,19 @@ spec:
             limits:
               cpu: "100m"
               memory: "64Mi"
-          # See discussion immediately below.
-#          volumeMounts:
-#            - mountPath: "/secrets"
-#              name: secrets
+            # See discussion immediately below.
+          volumeMounts:
+            - mountPath: "/secrets"
+              name: secrets
+
       terminationGracePeriodSeconds: 30
       # This shows the other way of getting at the contents of a Secret.
       # We'll create a named volume that gets mapped to the secret. The
       # keys in the secret are used as filenames.
-#      volumes:
-#        - name: secrets
-#          secret:
-#            secretName: peer-acks-v2-env-vars
+      volumes:
+        - name: secrets
+          secret:
+            secretName: peer-acks-v2-secrets
 ---
 # This service object creates a virtual IP address within the cluster
 # that will steer traffic to pods that match a label selector.
@@ -125,7 +133,7 @@ spec:
     - name: http
       port: 80
       protocol: TCP
-      targetPort: https
+      targetPort: http
   # This label selector matches against pod labels. Image a case where
   # you have three replicas with a "branch:stable" label and one  with a
   # "branch:canary". Since all four would have an "app:myapp" label, the
