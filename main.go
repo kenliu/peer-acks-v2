@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"debug/elf"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
@@ -64,8 +65,12 @@ func main() {
 		c.HTML(http.StatusOK, "report.tmpl", fetchAcks(db, ""))
 	})
 
-	serverPort := "8888" //TODO read from ENV
-	router.Run(":" + serverPort)
+	// run server on configured port
+	serverPort := os.Getenv("SERVER_PORT")
+	if serverPort == "" {
+		serverPort = ":8080" //default
+	}
+	router.Run(serverPort)
 }
 
 func createStaticRoutes(router *gin.Engine) {
