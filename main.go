@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -96,6 +97,8 @@ func getUserEmail(c *gin.Context) string {
 		email = DevEmailAddress
 	} else if c.GetHeader(GoogleIapUserHeader) != "" {
 		email = c.GetHeader(GoogleIapUserHeader)
+		log.Println("detected logged in email header: " + email)
+		email = strings.ReplaceAll(email, "accounts.google.com:", "")
 		log.Println("detected logged in email: " + email)
 	}
 	return email
