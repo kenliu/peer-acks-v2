@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"debug/elf"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
