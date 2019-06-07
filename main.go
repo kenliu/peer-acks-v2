@@ -65,6 +65,11 @@ func main() {
 		c.HTML(http.StatusOK, "report.tmpl", fetchAcks(db, ""))
 	})
 
+	// liveness/readiness probe
+	router.GET("/healthz", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
 	// run server on configured port
 	serverPort := os.Getenv("SERVER_PORT")
 	if serverPort == "" {
