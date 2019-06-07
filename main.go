@@ -14,12 +14,14 @@ import (
 
 func main() {
 	// initialize the DB
+	log.Println("attempting to connect to DB")
 	datasource := os.Getenv("DATASOURCE")
 	db, err := sql.Open("postgres", datasource)
 	if err != nil {
 		log.Fatal("error connecting to the database: ", err)
 	}
 	defer db.Close()
+	log.Println("DB connection successful")
 
 	// set up request handlers
 	router := gin.Default()
@@ -82,6 +84,7 @@ const GoogleIapUserHeader = "x-goog-authenticated-user-email"
 const DevEmailAddress = "dev.email@cockroachlabs.com"
 
 func getUserEmail(c *gin.Context) string {
+	log.Println("called getUserEmail()")
 	var email string
 
 	//check to see if we're running in a local environment and set a dummy user email
@@ -89,12 +92,14 @@ func getUserEmail(c *gin.Context) string {
 		email = DevEmailAddress
 	} else if c.GetHeader(GoogleIapUserHeader) != "" {
 		email = c.GetHeader(GoogleIapUserHeader)
+		log.Println("detected logged in email: " + email)
 	}
 	return email
 }
 
 // empty senderEmail string queries for all acks
 func fetchAcks(db *sql.DB, senderEmail string) gin.H {
+	log.Println("called fetchAcks()")
 	var messages []string
 	var rows *sql.Rows
 	var err error
