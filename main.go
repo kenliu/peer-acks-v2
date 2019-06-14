@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/nlopes/slack"
 	"log"
 	"net/http"
 	"os"
@@ -40,13 +41,8 @@ func main() {
 		message := ctx.PostForm("message")
 		log.Println(message)
 
-		//TODO handle case where msg is empty
-		//TODO trim spaces in message
-		query := "INSERT INTO acks (msg, sender_email, updated_at) values ($1, $2, current_timestamp)"
-		_, err := db.Exec(query, message, getUserEmail(ctx))
-		if err != nil {
-			log.Fatal(err) //TODO handle this better
-		}
+		senderEmail := getUserEmail(ctx)
+		createAck(db, message, senderEmail)
 
 		ctx.HTML(http.StatusOK, "ack_submitted.tmpl", fetchAcks(db, getUserEmail(ctx)))
 	})
@@ -70,12 +66,50 @@ func main() {
 		c.Status(http.StatusOK)
 	})
 
+	// slack slash command
+	router.POST("/slack/slashcommand", func(c *gin.Context) {
+		userName := c.PostForm("user_name")
+		message := c.PostForm("text")
+		userId := c.PostForm("user_id")
+		log.Println("slack command user_name:" + userName)
+
+		for key, value := range c.Request.PostForm {
+			log.Println(key, value)
+		}
+
+		slackApi := slack.New(os.Getenv("SLACK_OAUTH_TOKEN"))
+		user, err := slackApi.GetUserInfo(userId)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			return
+		}
+		log.Printf("ID: %s, Fullname: %s, Email: %s\n", user.ID, user.Profile.RealName, user.Profile.Email)
+		err = createAck(db, message, user.Profile.Email)
+
+		if err == nil {
+			c.Status(http.StatusOK)
+		} else {
+			c.Status(http.StatusInternalServerError)
+		}
+	})
+
 	// run server on configured port
 	serverPort := os.Getenv("SERVER_PORT")
 	if serverPort == "" {
 		serverPort = ":8080" //default
 	}
 	router.Run(serverPort)
+}
+
+func createAck(db *sql.DB, message string, senderEmail string) error {
+	//TODO handle case where msg is empty
+	//TODO trim spaces in message
+	query := "INSERT INTO acks (msg, sender_email, updated_at) values ($1, $2, current_timestamp)"
+	_, err := db.Exec(query, message, senderEmail)
+	if err != nil {
+		log.Fatal(err) //FIXME handle this better
+	}
+	return err
 }
 
 func createStaticRoutes(router *gin.Engine) {
