@@ -33,7 +33,7 @@ func main() {
 	})
 
 	router.GET("/acks", func(c *gin.Context) {
-		c.JSON(http.StatusOK, fetchAcks(db, getUserEmail(c)))
+		c.JSON(http.StatusOK, fetchAcks(db, ""))
 	})
 
 	router.POST("/acks", func(ctx *gin.Context) {
