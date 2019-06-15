@@ -30,11 +30,13 @@ func main() {
 	bindStaticRoutes(router)
 
 	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.tmpl", fetchAcks(db, getUserEmail(c)))
+		messages := fetchAcks(db, getUserEmail(c))
+		c.HTML(http.StatusOK, "index.tmpl", gin.H{"acks": messages})
 	})
 
 	router.GET("/acks", func(c *gin.Context) {
-		c.JSON(http.StatusOK, fetchAcks(db, ""))
+		messages := fetchAcks(db, "")
+		c.JSON(http.StatusOK, gin.H{"acks": messages})
 	})
 
 	router.POST("/acks", func(ctx *gin.Context) {
@@ -44,7 +46,7 @@ func main() {
 		senderEmail := getUserEmail(ctx)
 		createAck(db, message, senderEmail)
 
-		ctx.HTML(http.StatusOK, "ack_submitted.tmpl", fetchAcks(db, getUserEmail(ctx)))
+		ctx.HTML(http.StatusOK, "ack_submitted.tmpl", nil)
 	})
 
 	//TODO implement delete
@@ -53,12 +55,14 @@ func main() {
 
 	// my acks page
 	router.GET("/myacks", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "myacks.tmpl", fetchAcks(db, getUserEmail(c)))
+		messages := fetchAcks(db, getUserEmail(c))
+		c.HTML(http.StatusOK, "myacks.tmpl", gin.H{"acks": messages})
 	})
 
 	// report page
 	router.GET("/report", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "report.tmpl", fetchAcks(db, ""))
+		messages := fetchAcks(db, "")
+		c.HTML(http.StatusOK, "report.tmpl", gin.H{"acks": messages})
 	})
 
 	// liveness/readiness probe
@@ -156,7 +160,7 @@ func getUserEmail(c *gin.Context) string {
 }
 
 // empty senderEmail string queries for all acks
-func fetchAcks(db *sql.DB, senderEmail string) gin.H {
+func fetchAcks(db *sql.DB, senderEmail string) []string {
 	log.Println("called fetchAcks()")
 	var messages []string
 	var rows *sql.Rows
@@ -196,7 +200,7 @@ func fetchAcks(db *sql.DB, senderEmail string) gin.H {
 		log.Println(err)
 	}
 
-	return gin.H{"acks": messages}
+	return messages
 }
 
 func postAckToSlack(channelID string, message string) error {
@@ -207,4 +211,12 @@ func postAckToSlack(channelID string, message string) error {
 	}
 	log.Printf("Message successfully sent to channel %s at %s", channelID, timestamp)
 	return err
+}
+
+func filterMultilineAcksForWeb(messages []string) []string {
+	filtered := make([]string, len(messages))
+	for i, v := range messages {
+		filtered[i] = strings.ReplaceAll(v, "\n", "<br>")
+	}
+	return filtered
 }

@@ -38,3 +38,8 @@ body {
     font-weight: bold;
     color: #82cc00;
 }
+
+/* force multiline acks to be displayed with line breaks on newlines */
+li {
+   white-space: pre;
+}

@@ -6,6 +6,7 @@
 
 # This deployment object defines a pod template and a replica count.
 apiVersion: apps/v1
+
 kind: Deployment
 metadata:
   # What's with labels vs names?  The name is how the configuration
@@ -33,7 +34,7 @@ spec:
         app: peer-acks-v2
     spec:
       containers:
-        - image: gcr.io/cockroach-dev-inf/cockroachlabs/peer-acks-v2:e014f1e
+        - image: gcr.io/cockroach-dev-inf/cockroachlabs/peer-acks-v2:b5015db-kenliu
           imagePullPolicy: Always
           name: peer-acks-v2
           ports:
