@@ -119,7 +119,7 @@ func createAck(db *sql.DB, message string, senderEmail string) error {
 	query := "INSERT INTO acks (msg, sender_email, updated_at) values ($1, $2, current_timestamp)"
 	_, err := db.Exec(query, message, senderEmail)
 	if err != nil {
-		log.Fatal(err) //FIXME handle this better
+		log.Println(err) //FIXME handle this better
 	}
 	return err
 }
@@ -176,7 +176,7 @@ func fetchAcks(db *sql.DB, senderEmail string) gin.H {
 	}
 
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	defer rows.Close()
 
@@ -185,7 +185,7 @@ func fetchAcks(db *sql.DB, senderEmail string) gin.H {
 	for rows.Next() {
 		err := rows.Scan(&message)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 
 		log.Println(message)
@@ -193,7 +193,7 @@ func fetchAcks(db *sql.DB, senderEmail string) gin.H {
 	}
 	err = rows.Err()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	return gin.H{"acks": messages}
