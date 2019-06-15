@@ -71,25 +71,32 @@ func main() {
 		userName := c.PostForm("user_name")
 		message := c.PostForm("text")
 		userId := c.PostForm("user_id")
-		log.Println("slack command user_name:" + userName)
 
-		for key, value := range c.Request.PostForm {
-			log.Println(key, value)
-		}
+		log.Println("received slack slash command from user:" + userName + " with message text: \"" + message + "\"")
+
+		//for key, value := range c.Request.PostForm {
+		//	log.Println(key, value)
+		//}
 
 		slackApi := slack.New(os.Getenv("SLACK_OAUTH_TOKEN"))
-		user, err := slackApi.GetUserInfo(userId)
-		if err != nil {
-			fmt.Printf("%s\n", err)
-			return
-		}
-		log.Printf("ID: %s, Fullname: %s, Email: %s\n", user.ID, user.Profile.RealName, user.Profile.Email)
-		err = createAck(db, message, user.Profile.Email)
-
-		if err == nil {
-			c.Status(http.StatusOK)
+		if message == "" || message == "help" {
+			showSlashHelpText(c)
 		} else {
-			c.Status(http.StatusInternalServerError)
+			user, err := slackApi.GetUserInfo(userId)
+			if err != nil {
+				log.Printf("%s\n", err)
+				//FIXME handle this better
+				return
+			}
+			log.Printf("ID: %s, Fullname: %s, Email: %s\n", user.ID, user.Profile.RealName, user.Profile.Email)
+			err = createAck(db, message, user.Profile.Email)
+			postAckToSlack(os.Getenv("SLACK_ACKS_CHANNEL_ID"), message)
+
+			if err == nil {
+				c.String(http.StatusOK, "%s", "_thanks for recognizing your peer!_")
+			} else {
+				c.Status(http.StatusInternalServerError)
+			}
 		}
 	})
 
@@ -99,6 +106,11 @@ func main() {
 		serverPort = ":8080" //default
 	}
 	router.Run(serverPort)
+}
+
+func showSlashHelpText(c *gin.Context) {
+	const helpMessage = "_Use the_ `/ack` _command like this:_ `/ack shout out to somebody for doing something good` \n_You can do this from any channel in Slack._"
+	c.String(http.StatusOK, "%s", helpMessage)
 }
 
 func createAck(db *sql.DB, message string, senderEmail string) error {
@@ -185,4 +197,14 @@ func fetchAcks(db *sql.DB, senderEmail string) gin.H {
 	}
 
 	return gin.H{"acks": messages}
+}
+
+func postAckToSlack(channelID string, message string) error {
+	api := slack.New(os.Getenv("SLACK_OAUTH_TOKEN"))
+	channelID, timestamp, err := api.PostMessage(channelID, slack.MsgOptionText(message, false))
+	if err != nil {
+		log.Println(err)
+	}
+	log.Printf("Message successfully sent to channel %s at %s", channelID, timestamp)
+	return err
 }
