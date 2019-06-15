@@ -27,7 +27,7 @@ func main() {
 
 	// set up request handlers
 	router := gin.Default()
-	createStaticRoutes(router)
+	bindStaticRoutes(router)
 
 	router.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.tmpl", fetchAcks(db, getUserEmail(c)))
@@ -124,7 +124,7 @@ func createAck(db *sql.DB, message string, senderEmail string) error {
 	return err
 }
 
-func createStaticRoutes(router *gin.Engine) {
+func bindStaticRoutes(router *gin.Engine) {
 	// create static routes
 	router.StaticFile("/favicon.ico", "./resources/favicon.ico")
 	router.StaticFile("/radiator", "./templates/radiator.html")
