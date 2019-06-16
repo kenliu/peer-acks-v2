@@ -14,6 +14,19 @@ import (
 	_ "github.com/lib/pq"
 )
 
+type AppConfig struct {
+	datasource         string
+	environment        string
+	slackOAuthToken    string
+	slackAcksChannelID string
+	serverPort         string
+}
+
+const (
+	SOURCE_SLACK = "slack"
+	SOURCE_WEB   = "web"
+)
+
 func main() {
 	// initialize the DB connection
 	log.Println("attempting to connect to DB")
@@ -40,12 +53,15 @@ func main() {
 
 	router.POST("/acks", func(ctx *gin.Context) {
 		message := ctx.PostForm("message")
-		log.Println(message)
-
 		senderEmail := getUserEmail(ctx)
-		createAck(db, message, senderEmail)
+		err := createAck(db, message, senderEmail, SOURCE_WEB)
+		err = postAckToSlack(os.Getenv("SLACK_ACKS_CHANNELID"), message)
 
-		ctx.HTML(http.StatusOK, "ack_submitted.tmpl", nil)
+		if err != nil {
+			ctx.Status(http.StatusInternalServerError)
+		} else {
+			ctx.HTML(http.StatusOK, "ack_submitted.tmpl", nil)
+		}
 	})
 
 	//TODO implement delete
@@ -71,6 +87,8 @@ func main() {
 
 	// slack slash command
 	router.POST("/slack/slashcommand", func(c *gin.Context) {
+		var err error
+
 		userName := c.PostForm("user_name")
 		message := c.PostForm("text")
 		userId := c.PostForm("user_id")
@@ -85,21 +103,25 @@ func main() {
 		if message == "" || message == "help" {
 			showSlashHelpText(c)
 		} else {
-			user, err := slackApi.GetUserInfo(userId)
+			var user *slack.User
+			user, err = slackApi.GetUserInfo(userId)
 			if err != nil {
-				log.Printf("%s\n", err)
-				//FIXME handle this better
-				return
+				log.Println(err)
 			}
-			log.Printf("ID: %s, Fullname: %s, Email: %s\n", user.ID, user.Profile.RealName, user.Profile.Email)
-			err = createAck(db, message, user.Profile.Email)
-			postAckToSlack(os.Getenv("SLACK_ACKS_CHANNELID"), message)
 
-			if err == nil {
-				c.String(http.StatusOK, "%s", "_thanks for recognizing your peer!_")
-			} else {
-				c.Status(http.StatusInternalServerError)
+			log.Printf("ID: %s, Fullname: %s, Email: %s\n", user.ID, user.Profile.RealName, user.Profile.Email)
+			err = createAck(db, message, user.Profile.Email, SOURCE_SLACK)
+			if err != nil {
+				log.Println(err)
 			}
+			err = postAckToSlack(os.Getenv("SLACK_ACKS_CHANNELID"), message)
+		}
+
+		if err != nil {
+			c.Status(http.StatusInternalServerError)
+		} else {
+			// return response to Slack to display message to user
+			c.String(http.StatusOK, "%s", "_thanks for recognizing your fellow roacher!_")
 		}
 	})
 
@@ -116,13 +138,30 @@ func showSlashHelpText(c *gin.Context) {
 	c.String(http.StatusOK, "%s", helpMessage)
 }
 
-func createAck(db *sql.DB, message string, senderEmail string) error {
+func createAck(db *sql.DB, message string, senderEmail string, source string) error {
 	//TODO handle case where msg is empty
 	//TODO trim spaces in message
-	query := "INSERT INTO acks (msg, sender_email, updated_at) values ($1, $2, current_timestamp)"
-	_, err := db.Exec(query, message, senderEmail)
+	//TODO handle upserting slack info
+	query := "INSERT INTO users (email, updated_at) values ($1, current_timestamp) ON CONFLICT (email) DO UPDATE SET updated_at = current_timestamp RETURNING id"
+	rows, err := db.Query(query, senderEmail)
+	//defer rows.Close()
 	if err != nil {
 		log.Println(err) //FIXME handle this better
+		return err
+	}
+
+	var userId string
+	rows.Next()
+	err = rows.Scan(&userId)
+	if err != nil {
+		log.Println(err)
+	}
+
+	query = "INSERT INTO acks (msg, user_id, source, updated_at) values ($1, $2, $3, current_timestamp)"
+	_, err = db.Exec(query, message, userId, source)
+	if err != nil {
+		log.Println(err) //FIXME handle this better
+		return err
 	}
 	return err
 }
@@ -143,7 +182,7 @@ const GoogleIapUserHeader = "x-goog-authenticated-user-email"
 const DevEmailAddress = "dev.email@cockroachlabs.com"
 
 func getUserEmail(c *gin.Context) string {
-	log.Println("called getUserEmail()")
+	//log.Println("called getUserEmail()")
 	var email string
 
 	//check to see if we're running in a local environment and set a dummy user email
@@ -154,6 +193,8 @@ func getUserEmail(c *gin.Context) string {
 		log.Println("detected logged in email header: " + email)
 		email = strings.ReplaceAll(email, "accounts.google.com:", "")
 		log.Println("detected logged in email: " + email)
+	} else {
+		log.Fatal("user email address not detected. app configuration problem?")
 	}
 	return email
 }
@@ -174,7 +215,7 @@ func fetchAcks(db *sql.DB, senderEmail string) []string {
 		rows, err = db.Query(query)
 	} else {
 		log.Println("fetching acks by user email: " + senderEmail)
-		query = "select msg from acks where sender_email = $1 and created_at > ('" + curDateString + "' - 7) order by updated_at desc"
+		query = "select msg from acks a, users u where u.email = $1 and a.user_id = u.id and a.created_at > ('" + curDateString + "' - 7) order by a.updated_at desc"
 		rows, err = db.Query(query, senderEmail)
 	}
 
@@ -186,7 +227,7 @@ func fetchAcks(db *sql.DB, senderEmail string) []string {
 	var message string
 	log.Println("fetching acks:")
 	for rows.Next() {
-		err := rows.Scan(&message)
+		err = rows.Scan(&message)
 		if err != nil {
 			log.Println(err)
 		}
@@ -210,12 +251,4 @@ func postAckToSlack(channelID string, message string) error {
 	}
 	log.Printf("Message successfully sent to channel %s at %s", channelID, timestamp)
 	return err
-}
-
-func filterMultilineAcksForWeb(messages []string) []string {
-	filtered := make([]string, len(messages))
-	for i, v := range messages {
-		filtered[i] = strings.ReplaceAll(v, "\n", "<br>")
-	}
-	return filtered
 }
