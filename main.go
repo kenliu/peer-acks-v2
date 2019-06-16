@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	// initialize the DB
+	// initialize the DB connection
 	log.Println("attempting to connect to DB")
 	datasource := os.Getenv("DATASOURCE")
 	db, err := sql.Open("postgres", datasource)
@@ -94,7 +94,7 @@ func main() {
 			}
 			log.Printf("ID: %s, Fullname: %s, Email: %s\n", user.ID, user.Profile.RealName, user.Profile.Email)
 			err = createAck(db, message, user.Profile.Email)
-			postAckToSlack(os.Getenv("SLACK_ACKS_CHANNEL_ID"), message)
+			postAckToSlack(os.Getenv("SLACK_ACKS_CHANNELID"), message)
 
 			if err == nil {
 				c.String(http.StatusOK, "%s", "_thanks for recognizing your peer!_")
