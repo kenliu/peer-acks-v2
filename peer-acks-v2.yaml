@@ -49,6 +49,16 @@ spec:
                 secretKeyRef:
                   key: connstring
                   name: peer-acks-v2-secrets
+            - name: SLACK_ACKS_CHANNELID
+              valueFrom:
+                secretKeyRef:
+                  key: slack_acks_channelid
+                  name: peer-acks-v2-secrets
+            - name: SLACK_OAUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: slack_oauth_token
+                  name: peer-acks-v2-secrets
 
           # A Kubernetes Secret is a key-value map that can be used to
           # populate environment variables or it can be mounted as
