@@ -30,8 +30,7 @@ func main() {
 	bindStaticRoutes(router)
 
 	router.GET("/", func(c *gin.Context) {
-		messages := fetchAcks(db, getUserEmail(c))
-		c.HTML(http.StatusOK, "index.tmpl", gin.H{"acks": messages})
+		c.HTML(http.StatusOK, "index.tmpl", nil)
 	})
 
 	router.GET("/acks", func(c *gin.Context) {
