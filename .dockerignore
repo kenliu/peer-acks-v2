@@ -1,1 +1,9 @@
 credentials.txt
+/certs
+/db
+/design
+/docs
+*.yaml
+*.yml
+*.sql
+*.md
