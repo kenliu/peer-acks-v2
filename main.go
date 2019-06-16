@@ -161,7 +161,7 @@ func getUserEmail(c *gin.Context) string {
 // empty senderEmail string queries for all acks
 func fetchAcks(db *sql.DB, senderEmail string) []string {
 	log.Println("called fetchAcks()")
-	var messages []string
+	messages := make([]string, 0)
 	var rows *sql.Rows
 	var err error
 	var query string
