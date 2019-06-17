@@ -6,9 +6,10 @@ import (
 	"github.com/kenliu/peer-acks-v2/app/dataaccess"
 	"github.com/nlopes/slack"
 	"log"
-	"net/http"
 	"os"
 )
+
+const SLASH_HELP_TEXT = "_Use the_ `/ack` _command like this:_ `/ack shout out to somebody for doing something good` \n_You can do this from any channel in Slack._"
 
 func PostAckToSlack(channelID string, message string) error {
 	api := slack.New(os.Getenv("SLACK_OAUTH_TOKEN"))
@@ -20,10 +21,11 @@ func PostAckToSlack(channelID string, message string) error {
 	return err
 }
 
-func HandleSlashCommand(message string, c *gin.Context, err error, userId string, db *sql.DB) error {
+func HandleSlashCommand(message string, c *gin.Context, err error, userId string, db *sql.DB) (string, error) {
 	slackApi := slack.New(os.Getenv("SLACK_OAUTH_TOKEN"))
+	var responseMessage string
 	if message == "" || message == "help" {
-		showSlashHelpText(c)
+		responseMessage = SLASH_HELP_TEXT
 	} else {
 		var user *slack.User
 		user, err = slackApi.GetUserInfo(userId)
@@ -37,11 +39,7 @@ func HandleSlashCommand(message string, c *gin.Context, err error, userId string
 			log.Println(err)
 		}
 		err = PostAckToSlack(os.Getenv("SLACK_ACKS_CHANNELID"), message)
+		responseMessage = "_thanks for recognizing your fellow roacher!_"
 	}
-	return err
-}
-
-func showSlashHelpText(c *gin.Context) {
-	const helpMessage = "_Use the_ `/ack` _command like this:_ `/ack shout out to somebody for doing something good` \n_You can do this from any channel in Slack._"
-	c.String(http.StatusOK, "%s", helpMessage)
+	return responseMessage, err
 }

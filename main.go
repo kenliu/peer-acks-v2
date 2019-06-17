@@ -80,6 +80,7 @@ func main() {
 	// slack slash command
 	router.POST("/slack/slashcommand", func(c *gin.Context) {
 		var err error
+		var responseMessage string
 
 		userName := c.PostForm("user_name")
 		message := c.PostForm("text")
@@ -91,13 +92,13 @@ func main() {
 		//	log.Println(key, value)
 		//}
 
-		err = slack.HandleSlashCommand(message, c, err, userId, db)
+		responseMessage, err = slack.HandleSlashCommand(message, c, err, userId, db)
 
 		if err != nil {
 			c.Status(http.StatusInternalServerError)
 		} else {
 			// return response to Slack to display message to user
-			c.String(http.StatusOK, "%s", "_thanks for recognizing your fellow roacher!_")
+			c.String(http.StatusOK, "%s", responseMessage)
 		}
 	})
 
