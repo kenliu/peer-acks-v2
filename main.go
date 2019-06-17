@@ -101,6 +101,10 @@ func main() {
 		}
 	})
 
+	router.POST("/slack/events", func(c *gin.Context) {
+		slack.HandleSlackEvents(c, db)
+	})
+
 	// run server on configured port
 	serverPort := os.Getenv("SERVER_PORT")
 	if serverPort == "" {

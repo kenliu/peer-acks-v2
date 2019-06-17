@@ -2,6 +2,10 @@ package slack
 
 import (
 	"database/sql"
+	"encoding/json"
+	"github.com/nlopes/slack/slackevents"
+
+	//	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/kenliu/peer-acks-v2/app/dataaccess"
 	"github.com/nlopes/slack"
@@ -17,6 +21,39 @@ func PostAckToSlack(channelID string, message string) error {
 		log.Println(err)
 	}
 	log.Printf("Message successfully sent to channel %s at %s", channelID, timestamp)
+	return err
+}
+
+func HandleSlackEvents(c *gin.Context, db *sql.DB) error {
+	//eventsAPIEvent, err := slackevents.ParseEvent(json.RawMessage(body), slackevents.OptionVerifyToken(&slackevents.TokenComparator{VerificationToken: "TOKEN"}))
+	//if e != nil {
+	//}
+	//
+	//if eventsAPIEvent.Type == slackevents.URLVerification {
+	//	var r *slackevents.ChallengeResponse
+	//	err := json.Unmarshal([]byte(body), &r)
+	//	if err != nil {
+	//		w.WriteHeader(http.StatusInternalServerError)
+	//	}
+	//	w.Header().Set("Content-Type", "text")
+	//	w.Write([]byte(r.Challenge))
+	//}
+	//if eventsAPIEvent.Type == slackevents.CallbackEvent {
+	//	innerEvent := eventsAPIEvent.InnerEvent
+	//	switch ev := innerEvent.Data.(type) {
+	//	case *slackevents.AppMentionEvent:
+	//		api.PostMessage(ev.Channel, slack.MsgOptionText("Yes, hello.", false))
+	//	}
+	//}
+	body, err := c.GetRawData()
+	js := json.RawMessage(body)
+	log.Println(js)
+	eventsAPIEvent, err := slackevents.ParseEvent(json.RawMessage(body), slackevents.OptionNoVerifyToken())
+	log.Println(slackevents.EventsAPIURLVerificationEvent(eventsAPIEvent.Data))
+	//c.String(http.StatusOK, eventsAPIEvent.)
+	//var evt slackevents.EventsAPIURLVerificationEvent = %
+	//evt = &eventsAPIEvent
+
 	return err
 }
 

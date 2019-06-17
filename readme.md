@@ -1,5 +1,9 @@
 port of https://github.com/andreimatei/peer-ack to go
 
+
+kubectl expose deployment/peer-acks-v2 --name="peer-acks-v2-public" --type="NodePort" --port 80
+
+
 # Development
 
 ## Secrets configuration in local dev environment
@@ -9,6 +13,10 @@ port of https://github.com/andreimatei/peer-ack to go
 ## Secrets configuration on the server
 
 TODO note conn string and DB client cert
+
+# add secrets
+
+echo -n <some text> | base64
 
 ## Building and pushing to k8s
 
@@ -29,3 +37,6 @@ kubectl apply -f peer-acks-v2.yaml
 kubectl describe deployment h2hello
 kubectl describe service h2hello
 ```
+
+# local development
+`ngrok http -subdomain=peer-acks 8888`
