@@ -77,6 +77,16 @@ func main() {
 		c.Status(http.StatusOK)
 	})
 
+	router.POST("/slack/events", func(c *gin.Context) {
+		body, err := c.GetRawData()
+		challenge, err := slack.HandleChallengeEvent(body)
+		if err != nil {
+			c.Status(http.StatusInternalServerError)
+		} else {
+			c.String(http.StatusOK, "%s", challenge)
+		}
+	})
+
 	// slack slash command
 	router.POST("/slack/slashcommand", func(c *gin.Context) {
 		var err error

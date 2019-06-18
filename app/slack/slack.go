@@ -2,6 +2,7 @@ package slack
 
 import (
 	"database/sql"
+	"encoding/json"
 	"github.com/kenliu/peer-acks-v2/app/dataaccess"
 	"github.com/nlopes/slack"
 	"log"
@@ -19,6 +20,12 @@ func PostAckToSlack(channelID string, message string) error {
 	}
 	log.Printf("Message successfully sent to channel %s at %s", channelID, timestamp)
 	return err
+}
+
+func HandleChallengeEvent(body []byte) (string, error) {
+	var request map[string]string
+	err := json.Unmarshal(body, &request)
+	return request["challenge"], err
 }
 
 func HandleSlashCommand(message string, userId string, db *sql.DB) (string, error) {
