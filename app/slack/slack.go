@@ -2,10 +2,10 @@ package slack
 
 import (
 	"database/sql"
-	"github.com/gin-gonic/gin"
 	"github.com/kenliu/peer-acks-v2/app/dataaccess"
 	"github.com/nlopes/slack"
 	"log"
+	"net/http"
 	"os"
 )
 
@@ -21,7 +21,8 @@ func PostAckToSlack(channelID string, message string) error {
 	return err
 }
 
-func HandleSlashCommand(message string, c *gin.Context, err error, userId string, db *sql.DB) (string, error) {
+func HandleSlashCommand(message string, userId string, db *sql.DB) (string, error) {
+	var err error
 	slackApi := slack.New(os.Getenv("SLACK_OAUTH_TOKEN"))
 	var responseMessage string
 	if message == "" || message == "help" {
@@ -42,4 +43,19 @@ func HandleSlashCommand(message string, c *gin.Context, err error, userId string
 		responseMessage = "_thanks for recognizing your fellow roacher!_"
 	}
 	return responseMessage, err
+}
+
+func ValidateRequestSignature(headers http.Header, body []byte, secret string) error {
+	sv, _ := slack.NewSecretsVerifier(headers, secret)
+	sv.Write(body)
+	return sv.Ensure()
+}
+
+// support for verification tokens is deprecated in Slack, but it's a quick way to add authorization
+func ValidateVerificationToken(requestToken string) bool {
+	secretToken := os.Getenv("SLACK_VERIFICATION_TOKEN")
+	if secretToken == "" {
+		log.Fatal("SLACK_VERIFICATION_TOKEN environment variable not set")
+	}
+	return secretToken == requestToken
 }

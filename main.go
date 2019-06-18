@@ -80,8 +80,16 @@ func main() {
 	// slack slash command
 	router.POST("/slack/slashcommand", func(c *gin.Context) {
 		var err error
-		var responseMessage string
+		body, err := c.GetRawData()
+		verr := slack.ValidateRequestSignature(c.Request.Header, body, os.Getenv("SLACK_SIGNING_SECRET"))
+		if verr != nil {
+			log.Println(verr)
+			log.Println("request signature verification failed")
+			c.Status(http.StatusForbidden)
+			return
+		}
 
+		var responseMessage string
 		userName := c.PostForm("user_name")
 		message := c.PostForm("text")
 		userId := c.PostForm("user_id")
@@ -92,7 +100,7 @@ func main() {
 		//	log.Println(key, value)
 		//}
 
-		responseMessage, err = slack.HandleSlashCommand(message, c, err, userId, db)
+		responseMessage, err = slack.HandleSlashCommand(message, userId, db)
 
 		if err != nil {
 			c.Status(http.StatusInternalServerError)
