@@ -34,7 +34,7 @@ spec:
         app: peer-acks-v2
     spec:
       containers:
-        - image: gcr.io/cockroach-dev-inf/cockroachlabs/peer-acks-v2:b5015db-kenliu
+        - image: gcr.io/cockroach-dev-inf/cockroachlabs/peer-acks-v2:b29902e-kenliu
           imagePullPolicy: Always
           name: peer-acks-v2
           ports:
@@ -59,6 +59,12 @@ spec:
                 secretKeyRef:
                   key: slack_oauth_token
                   name: peer-acks-v2-secrets
+            - name: SLACK_SIGNING_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: slack_signing_secret
+                  name: peer-acks-v2-secrets
+
 
           # A Kubernetes Secret is a key-value map that can be used to
           # populate environment variables or it can be mounted as
