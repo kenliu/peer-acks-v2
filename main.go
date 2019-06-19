@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"github.com/gin-gonic/gin"
 	"github.com/kenliu/peer-acks-v2/app/dataaccess"
 	"github.com/kenliu/peer-acks-v2/app/slack"
 	_ "github.com/lib/pq"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -78,6 +80,7 @@ func main() {
 	})
 
 	router.POST("/slack/events", func(c *gin.Context) {
+		//TODO detect event type and discard unknown events, as a safety measure
 		body, err := c.GetRawData()
 		challenge, err := slack.HandleChallengeEvent(body)
 		if err != nil {
@@ -89,27 +92,25 @@ func main() {
 
 	// slack slash command
 	router.POST("/slack/slashcommand", func(c *gin.Context) {
-		//var err error
-		//body, err := c.GetRawData()
-		//verr := slack.ValidateRequestSignature(c.Request.Header, body, os.Getenv("SLACK_SIGNING_SECRET"))
-		//if verr != nil {
-		//	log.Println(verr)
-		//	log.Println("request signature verification failed")
-		//	c.Status(http.StatusForbidden)
-		//	return
-		//}
+		verr := slack.ValidateRequestSignature(c.Request.Header, repeatableReadBody(c), os.Getenv("SLACK_SIGNING_SECRET"))
+		if verr != nil {
+			log.Println(verr)
+			log.Println("request signature verification failed")
+			c.Status(http.StatusForbidden)
+			return
+		}
 
-		var responseMessage string
+		var err error
 		userName := c.PostForm("user_name")
 		message := c.PostForm("text")
 		userId := c.PostForm("user_id")
-
 		log.Println("received slack slash command from user:" + userName + " with message text: \"" + message + "\"")
 
 		//for key, value := range c.Request.PostForm {
 		//	log.Println(key, value)
 		//}
 
+		var responseMessage string
 		responseMessage, err = slack.HandleSlashCommand(message, userId, db)
 
 		if err != nil {
@@ -126,6 +127,16 @@ func main() {
 		serverPort = ":8080" //default
 	}
 	router.Run(serverPort)
+}
+
+func repeatableReadBody(c *gin.Context) []byte {
+	var bodyBytes []byte
+	if c.Request.Body != nil {
+		bodyBytes, _ = ioutil.ReadAll(c.Request.Body)
+	}
+	// Restore the io.ReadCloser to its original state
+	c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	return bodyBytes
 }
 
 func bindStaticRoutes(router *gin.Engine) {
