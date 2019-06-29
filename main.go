@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"database/sql"
+	//	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/kenliu/peer-acks-v2/app/dataaccess"
 	"github.com/kenliu/peer-acks-v2/app/slack"
@@ -32,6 +33,13 @@ func main() {
 	defer db.Close()
 	log.Println("DB connection successful")
 
+	//sentry.Init(sentry.ClientOptions{
+	//	Environment: "staging",
+	//	Dsn: "https://93c7a505a8a14c659d087caf91f165f9@sentry.io/1483004",
+	//})
+	//
+	//errors.New()
+	//
 	// set up request handlers
 	router := gin.Default()
 	bindStaticRoutes(router)
@@ -46,9 +54,12 @@ func main() {
 	})
 
 	router.POST("/acks", func(ctx *gin.Context) {
+		var err error
 		message := ctx.PostForm("message")
 		senderEmail := getUserEmail(ctx)
-		err := dataaccess.CreateAck(db, message, senderEmail, dataaccess.SOURCE_WEB)
+
+		err = dataaccess.CreateAck(db, message, "", senderEmail, dataaccess.SOURCE_WEB)
+		//FIXME handle error
 		err = slack.PostAckToSlack(os.Getenv("SLACK_ACKS_CHANNELID"), message)
 
 		if err != nil {
@@ -116,7 +127,7 @@ func main() {
 		if err != nil {
 			c.Status(http.StatusInternalServerError)
 		} else {
-			// return response to Slack to display message to user
+			// return response to Slack API to display message to user
 			c.String(http.StatusOK, "%s", responseMessage)
 		}
 	})

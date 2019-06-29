@@ -12,27 +12,15 @@ const (
 	SOURCE_WEB   = "web"
 )
 
-func CreateAck(db *sql.DB, message string, senderEmail string, source string) error {
+func CreateAck(db *sql.DB, message string, slackFormattedMessage string, senderEmail string, source string) error {
 	//TODO handle case where msg is empty
 	//TODO trim spaces in message
-	//TODO handle upserting slack info
-	query := "INSERT INTO users (email, updated_at) values ($1, current_timestamp) ON CONFLICT (email) DO UPDATE SET updated_at = current_timestamp RETURNING id"
-	rows, err := db.Query(query, senderEmail)
-	//defer rows.Close()
-	if err != nil {
-		log.Println(err) //FIXME handle this better
-		return err
-	}
 
-	var userId string
-	rows.Next()
-	err = rows.Scan(&userId)
-	if err != nil {
-		log.Println(err)
-	}
+	//TODO this call probably doesn't belong here because it makes this func not truly a crud operation
+	userId, err := UpsertUser(db, senderEmail)
 
-	query = "INSERT INTO acks (msg, user_id, source, updated_at) values ($1, $2, $3, current_timestamp)"
-	_, err = db.Exec(query, message, userId, source)
+	query := "INSERT INTO acks (msg, msg_slack_fmt, user_id, source, updated_at) values ($1, $2, $3, $4, current_timestamp)"
+	_, err = db.Exec(query, message, slackFormattedMessage, userId, source)
 	if err != nil {
 		log.Println(err) //FIXME handle this better
 		return err
@@ -42,7 +30,6 @@ func CreateAck(db *sql.DB, message string, senderEmail string, source string) er
 
 // empty senderEmail string queries for all acks
 func FetchAcks(db *sql.DB, senderEmail string) []string {
-	log.Println("called FetchAcks()")
 	messages := make([]string, 0)
 	var rows *sql.Rows
 	var err error
@@ -82,4 +69,25 @@ func FetchAcks(db *sql.DB, senderEmail string) []string {
 	}
 
 	return messages
+}
+
+func UpsertUser(db *sql.DB, email string) (string, error) {
+	//TODO handle upserting slack info
+
+	query := "INSERT INTO users (email, updated_at) values ($1, current_timestamp) ON CONFLICT (email) DO UPDATE SET updated_at = current_timestamp RETURNING id"
+	rows, err := db.Query(query, email)
+	//defer rows.Close()
+	if err != nil {
+		log.Println(err) //FIXME handle this better
+		return "", err
+	}
+
+	var userId string
+	rows.Next()
+	err = rows.Scan(&userId)
+	if err != nil {
+		log.Println(err)
+	}
+
+	return userId, err
 }
