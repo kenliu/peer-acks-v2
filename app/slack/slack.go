@@ -94,8 +94,7 @@ func HandleSlashCommand(message string, userId string, db *sql.DB) (string, erro
 
 		log.Printf("ID: %s, Fullname: %s, Email: %s\n", user.ID, user.Profile.RealName, user.Profile.Email)
 
-		//TODO write unescaped ack to DB
-		err = dataaccess.CreateAck(db, message, unescaped, user.Profile.Email, dataaccess.SOURCE_SLACK)
+		err = dataaccess.CreateAck(db, unescaped, message, user.Profile.Email, dataaccess.SOURCE_SLACK)
 		if err != nil {
 			log.Println(err)
 		}
