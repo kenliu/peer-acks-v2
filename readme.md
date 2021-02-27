@@ -1,10 +1,32 @@
-port of https://github.com/andreimatei/peer-ack to go
+peer-acks-v2 is a port of the original Cockroach Labs peer-acks https://github.com/andreimatei/peer-ack to Go, adding Slack integration
+
+# About
+
+Peer Acks V2 is an internal web app and Slack integration used at Cockroach Labs for employees to show appreciation
+to each other in the form of "peer acks".
+
+TODO screenshot
 
 # Development
 
+## Setting up local dev environment
+
+### start up local CRDB cluster
+
+
+
+### start up local server
+
+go build
+
+ngrok http -subdomain=peer-acks 8888
+
+https://peer-acks.ngrok.io/slack/events
+
+
 ## Secrets configuration in local dev environment
 
-
+TODO local env setup
 
 ## Secrets configuration on the server
 
