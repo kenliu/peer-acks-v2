@@ -1,4 +1,4 @@
-credentials.txt
+credentials.md
 /assets
 /certs
 /db
@@ -8,3 +8,5 @@ credentials.txt
 *.yml
 *.sql
 *.md
+.envrc
+.envrc.example

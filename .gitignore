@@ -1,4 +1,4 @@
 .DS_Store
 /.idea
-credentials.txt
+credentials.md
 /db/backups
