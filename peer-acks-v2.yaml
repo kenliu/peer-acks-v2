@@ -1,12 +1,4 @@
-# This file contains a deployment and service configuration for a
-# generic, HTTP2-based backend. The use of HTTP2 also implies the use of
-# TLS between the load-balancer and the backend. This basic
-# configuration also works equally well for HTTPS-1.1 or HTTP backends,
-# there are callouts below for deletions to make.
-
-# This deployment object defines a pod template and a replica count.
 apiVersion: apps/v1
-
 kind: Deployment
 metadata:
   # What's with labels vs names?  The name is how the configuration
@@ -34,7 +26,7 @@ spec:
         app: peer-acks-v2
     spec:
       containers:
-        - image: gcr.io/cockroach-dev-inf/cockroachlabs/peer-acks-v2:b29902e-kenliu
+        - image: gcr.io/cockroach-dev-inf/cockroachlabs/peer-acks-v2:e238618-kenliu
           imagePullPolicy: Always
           name: peer-acks-v2
           ports:
@@ -43,6 +35,7 @@ spec:
               # port numbers when referring to the pod.
               name: http
               protocol: TCP
+
           env:
             - name: DATASOURCE
               valueFrom:
@@ -65,7 +58,6 @@ spec:
                   key: slack_signing_secret
                   name: peer-acks-v2-secrets
 
-
           # A Kubernetes Secret is a key-value map that can be used to
           # populate environment variables or it can be mounted as
           # though it were a collection of files. Here, we're going to
@@ -79,14 +71,14 @@ spec:
 #          envFrom:
 #            - secretRef:
 #                name: peer-acks-v2-env-vars
-          # Liveness determine if the container should be terminated.
+
+          # Liveness determines if the container should be terminated.
           livenessProbe:
             failureThreshold: 3
             httpGet:
               path: /healthz
               port: http
-              # Remove this for an HTTP-only backend.
-              #scheme: HTTPS
+
           # Readiness controls when the container is available to serve
           # network requests. For many services, this will be the same
           # query as above. If the backend needs to establish many
@@ -98,27 +90,27 @@ spec:
             httpGet:
               path: /healthz?ready=1
               port: http
-              # Remove this for an HTTP-only backend.
-              #scheme: HTTPS
           resources:
             # The requested amount is used to place the pod on a
             # particular machine.
             requests:
               cpu: "50m"
               memory: "32Mi"
+
             # These are hard limits that will result in the termination
             # of the container.
             limits:
               cpu: "100m"
               memory: "64Mi"
-            # See discussion immediately below.
+
+          # we have the secrets mounted as a volume (see corresponding volumes section below)
           volumeMounts:
             - mountPath: "/secrets"
               name: secrets
 
       terminationGracePeriodSeconds: 30
-      # This shows the other way of getting at the contents of a Secret.
-      # We'll create a named volume that gets mapped to the secret. The
+
+      # we have a named volume that gets mapped to the secret. The
       # keys in the secret are used as filenames.
       volumes:
         - name: secrets
@@ -151,6 +143,7 @@ spec:
       port: 80
       protocol: TCP
       targetPort: http
+
   # This label selector matches against pod labels. Image a case where
   # you have three replicas with a "branch:stable" label and one  with a
   # "branch:canary". Since all four would have an "app:myapp" label, the
@@ -158,9 +151,10 @@ spec:
   # course, that the backend can operate in a mixed-version deployment.
   selector:
     app: peer-acks-v2
-    # This is also a "NodePort" service (as opposed to "LoadBalancer"),
-    # which makes every machine in the k8s cluster forward network
-    # traffic from an arbitrarily-chosen port number on the host
-    # machine's "real" IP address. This is ultimately how the Ingress
-    # controller routes HTTP requests into the cluster.
+
+  # This is also a "NodePort" service (as opposed to "LoadBalancer"),
+  # which makes every machine in the k8s cluster forward network
+  # traffic from an arbitrarily-chosen port number on the host
+  # machine's "real" IP address. This is ultimately how the Ingress
+  # controller routes HTTP requests into the cluster.
   type: NodePort
