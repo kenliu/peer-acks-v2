@@ -1,6 +1,6 @@
 module github.com/kenliu/peer-acks-v2
 
-go 1.12
+go 1.19
 
 require (
 	github.com/certifi/gocertifi v0.0.0-20190506164543-d2eda7129713 // indirect
