@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/kenliu/peer-acks-v2/app/dataaccess"
-	"github.com/nlopes/slack"
+	"github.com/slack-go/slack"
 	"log"
 	"net/http"
 	"os"
@@ -22,13 +22,13 @@ func PostAckToSlack(channelID string, message string) error {
 	return err
 }
 
-func GetChannelInfo(channelId string) (*slack.Channel, error) {
+func getConversationInfo(channelId string) (*slack.Channel, error) {
 	log.Println("getting channel info for channelId:", channelId)
-	channel, err := slackApi().GetChannelInfo(channelId)
+	conversation, err := slackApi().GetConversationInfo(channelId, false)
 	if err != nil {
 		log.Println(err)
 	}
-	return channel, err
+	return conversation, err
 }
 
 func GetUserInfo(userId string) (*slack.User, error) {
@@ -54,11 +54,11 @@ func LookupUserAndChannelNames(escapedUsers []string, escapedChannels []string) 
 
 	for _, escapedChannel := range escapedChannels {
 		channelId := UnescapeChannelId(escapedChannel)
-		channel, err := GetChannelInfo(channelId)
+		conversation, err := getConversationInfo(channelId)
 		if err != nil {
 			return nil, err
 		}
-		names[channelId] = channel.Name
+		names[channelId] = conversation.Name
 	}
 	return names, nil
 }
@@ -111,6 +111,7 @@ func ValidateRequestSignature(headers http.Header, body []byte, secret string) e
 	return sv.Ensure()
 }
 
+// TODO remove this
 // support for verification tokens is deprecated in Slack, but it's a quick way to add authorization
 func ValidateVerificationToken(requestToken string) bool {
 	secretToken := os.Getenv("SLACK_VERIFICATION_TOKEN")
