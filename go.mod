@@ -3,7 +3,7 @@ module github.com/kenliu/peer-acks-v2
 go 1.19
 
 require (
-	github.com/gin-gonic/gin v1.7.0
+	github.com/gin-gonic/gin v1.7.7
 	github.com/lib/pq v1.1.1
 	github.com/nlopes/slack v0.5.0
 	github.com/stretchr/testify v1.4.0
