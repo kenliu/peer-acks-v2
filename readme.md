@@ -51,3 +51,73 @@ kubectl apply -f peer-acks-v2.yaml
 kubectl describe deployment h2hello
 kubectl describe service h2hello
 ```
+
+# Peer Acks v2
+
+A system for peer recognition and acknowledgments, now powered by Google Cloud Functions.
+
+## Architecture
+
+The application is now split into several serverless functions:
+
+- `GetAcks`: Retrieves all acknowledgments
+- `CreateAck`: Creates a new acknowledgment
+- `GetMyAcks`: Retrieves acknowledgments for the current user
+- `GetAcksReport`: Generates a report of all acknowledgments
+- `SlackEvents`: Handles Slack events and challenges
+- `SlackSlashCommand`: Processes Slack slash commands
+
+## Prerequisites
+
+- Google Cloud SDK
+- Go 1.21 or later
+- PostgreSQL database
+- Slack app configuration
+
+## Environment Variables
+
+The following environment variables need to be configured in Google Cloud:
+
+```
+DATASOURCE=postgresql://user:password@host:port/dbname
+SLACK_ACKS_CHANNELID=your_slack_channel_id
+SLACK_SIGNING_SECRET=your_slack_signing_secret
+```
+
+## Deployment
+
+1. Ensure you have the Google Cloud SDK installed and configured:
+   ```bash
+   gcloud auth login
+   gcloud config set project YOUR_PROJECT_ID
+   ```
+
+2. Deploy all functions using Cloud Build:
+   ```bash
+   gcloud builds submit --config cloudbuild-functions.yaml
+   ```
+
+3. After deployment, you can find the function URLs in the Google Cloud Console or by running:
+   ```bash
+   gcloud functions describe FUNCTION_NAME --gen2 --region=us-central1
+   ```
+
+## Security
+
+- All ack-related functions require authentication through Google Cloud IAP
+- Slack endpoints are authenticated using Slack's signing secret
+- Database credentials are managed through environment variables
+
+## Development
+
+To run functions locally for development:
+
+1. Install the Functions Framework:
+   ```bash
+   go install github.com/GoogleCloudPlatform/functions-framework-go/cmd/functions-framework@latest
+   ```
+
+2. Run a function locally:
+   ```bash
+   functions-framework --target=FUNCTION_NAME
+   ```
