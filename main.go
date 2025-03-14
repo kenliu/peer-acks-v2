@@ -42,48 +42,6 @@ func main() {
 	//
 	// set up request handlers
 	router := gin.Default()
-	bindStaticRoutes(router)
-
-	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.tmpl", nil)
-	})
-
-	router.GET("/acks", func(c *gin.Context) {
-		messages := dataaccess.FetchAcks(db, "")
-		c.JSON(http.StatusOK, gin.H{"acks": messages})
-	})
-
-	router.POST("/acks", func(ctx *gin.Context) {
-		var err error
-		message := ctx.PostForm("message")
-		senderEmail := getUserEmail(ctx)
-
-		err = dataaccess.CreateAck(db, message, "", senderEmail, dataaccess.SOURCE_WEB)
-		//FIXME handle error
-		err = slack.PostAckToSlack(os.Getenv("SLACK_ACKS_CHANNELID"), message)
-
-		if err != nil {
-			ctx.Status(http.StatusInternalServerError)
-		} else {
-			ctx.HTML(http.StatusOK, "ack_submitted.tmpl", nil)
-		}
-	})
-
-	//TODO implement delete
-	//router.DELETE("/acks/:id", func(c *gin.Context) {
-	//})
-
-	// my acks page
-	router.GET("/myacks", func(c *gin.Context) {
-		messages := dataaccess.FetchAcks(db, getUserEmail(c))
-		c.HTML(http.StatusOK, "myacks.tmpl", gin.H{"acks": messages})
-	})
-
-	// report page
-	router.GET("/report", func(c *gin.Context) {
-		messages := dataaccess.FetchAcks(db, "")
-		c.HTML(http.StatusOK, "report.tmpl", gin.H{"acks": messages})
-	})
 
 	// liveness/readiness probe
 	router.GET("/healthz", func(c *gin.Context) {
@@ -148,13 +106,4 @@ func repeatableReadBody(c *gin.Context) []byte {
 	// Restore the io.ReadCloser to its original state
 	c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	return bodyBytes
-}
-
-func bindStaticRoutes(router *gin.Engine) {
-	// create static routes
-	router.StaticFile("/favicon.ico", "./resources/favicon.ico")
-	router.StaticFile("/radiator", "./templates/radiator.html")
-	router.Static("/resources", "./resources")
-
-	router.LoadHTMLGlob("templates/*")
 }
