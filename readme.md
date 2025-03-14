@@ -1,53 +1,86 @@
-peer-acks-v2 is a port of the original Cockroach Labs peer-acks https://github.com/andreimatei/peer-ack to Go, adding Slack integration
+# Peer Acks v2
 
-# About
+A port of the original [Cockroach Labs peer-acks](https://github.com/andreimatei/peer-ack) to Go, now powered by Google Cloud Functions.
 
-Peer Acks V2 is an internal web app and Slack integration used at Cockroach Labs for employees to show appreciation
-to each other in the form of "peer acks".
+## About
 
-TODO screenshot
+Peer Acks V2 is an internal Slack integration used at Cockroach Labs for employees to show appreciation to each other in the form of "peer acks".
 
-# Development
+## Architecture
 
-## Setting up local dev environment
+The application consists of two serverless functions:
 
-### start up local CRDB cluster
+- `SlackEvents`: Handles Slack events and challenges
+- `SlackSlashCommand`: Processes Slack slash commands
 
+## Prerequisites
 
+- Google Cloud SDK
+- Go 1.21 or later
+- CockroachDB database
+- Slack app configuration
 
-### start up local server
+## Environment Variables
 
-go build
+The following environment variables are required:
 
-ngrok http -subdomain=peer-acks 8888
-
-https://peer-acks.ngrok.io/slack/events
-
-
-## Secrets configuration in local dev environment
-
-TODO local env setup
-
-## Secrets configuration on the server
-
-TODO note conn string and DB client cert
-
-## Building and pushing to k8s
-
-### Create Docker image
-```sh
-BRANCH=$(git symbolic-ref --short HEAD)-$USER
-SHA=$(git rev-parse --short HEAD)-$USER
-gcloud --project cockroach-dev-inf builds submit --substitutions=BRANCH_NAME=$BRANCH,SHORT_SHA=$SHA
+```
+DATASOURCE=postgresql://user@crdb-host:26257/peer_acks?sslmode=verify-full&sslcert=client.crt&sslkey=client.key&sslrootcert=ca.crt
+SLACK_ACKS_CHANNELID=your_slack_channel_id
+SLACK_SIGNING_SECRET=your_slack_signing_secret
 ```
 
-### Deploying container image to k8s
-Update `peer-acks-v2:36` to the sha of the generated Docker image above.
+## Development
 
-```sh
-# Upsert the configuration to GKE
-kubectl apply -f peer-acks-v2.yaml
-# Get a friendly view of the status.
-kubectl describe deployment h2hello
-kubectl describe service h2hello
-```
+### Local Setup
+
+1. Set up a database:
+   ```bash
+   # Start up local CRDB cluster and create database
+   cockroach start-single-node --insecure
+   cockroach sql --insecure -e "CREATE DATABASE peer_acks;"
+   ```
+
+2. Set required environment variables:
+   ```bash
+   export DATASOURCE="postgresql://root@localhost:26257/peer_acks?sslmode=disable"
+   export SLACK_SIGNING_SECRET="your-slack-secret"
+   export SLACK_ACKS_CHANNELID="your-channel-id"
+   ```
+
+3. Run a function locally:
+   ```bash
+   FUNCTION_TARGET=SlackEvents go run main.go
+   ```
+
+4. (Optional) To expose local server to Slack:
+   ```bash
+   ngrok http 8080
+   ```
+   Then update your Slack app's event subscription URL to the ngrok URL.
+
+## Deployment
+
+### Deploy to Google Cloud Functions
+
+1. Ensure you have the Google Cloud SDK installed and configured:
+   ```bash
+   gcloud auth login
+   gcloud config set project YOUR_PROJECT_ID
+   ```
+
+2. Deploy using Cloud Build:
+   ```bash
+   gcloud builds submit --config cloudbuild-functions.yaml \
+     --substitutions=_DATASOURCE="your-db-connection-string",\
+     _SLACK_SIGNING_SECRET="your-slack-secret",\
+     _SLACK_ACKS_CHANNELID="your-channel-id"
+   ```
+
+3. After deployment, update your Slack app configuration with the new function URLs from the Google Cloud Console.
+
+## Security
+
+- Slack endpoints are authenticated using Slack's signing secret
+- Database credentials are managed through environment variables
+- Functions are deployed with HTTPS endpoints

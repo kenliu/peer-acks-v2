@@ -3,11 +3,12 @@ package slack
 import (
 	"database/sql"
 	"encoding/json"
-	"github.com/kenliu/peer-acks-v2/app/dataaccess"
-	"github.com/slack-go/slack"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/kenliu/peer-acks-v2/app/dataaccess"
+	"github.com/slack-go/slack"
 )
 
 const slashHelpText = "_Use the_ `/ack` _command like this:_ `/ack shout out to somebody for doing something good` \n_You can do this from any channel in Slack._"

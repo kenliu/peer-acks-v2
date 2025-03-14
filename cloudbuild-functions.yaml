@@ -1,0 +1,39 @@
+steps:
+  # Deploy Slack functions
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args:
+      - gcloud
+      - functions
+      - deploy
+      - SlackEvents
+      - --gen2
+      - --runtime=go121
+      - --region=us-central1
+      - --source=.
+      - --entry-point=HandleSlackEvents
+      - --trigger-http
+      - --allow-unauthenticated=true
+      - --set-env-vars=DATASOURCE=${_DATASOURCE},SLACK_SIGNING_SECRET=${_SLACK_SIGNING_SECRET},SLACK_ACKS_CHANNELID=${_SLACK_ACKS_CHANNELID}
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args:
+      - gcloud
+      - functions
+      - deploy
+      - SlackSlashCommand
+      - --gen2
+      - --runtime=go121
+      - --region=us-central1
+      - --source=.
+      - --entry-point=HandleSlackSlashCommand
+      - --trigger-http
+      - --allow-unauthenticated=true
+      - --set-env-vars=DATASOURCE=${_DATASOURCE},SLACK_SIGNING_SECRET=${_SLACK_SIGNING_SECRET},SLACK_ACKS_CHANNELID=${_SLACK_ACKS_CHANNELID}
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _DATASOURCE: # will be provided during deployment
+  _SLACK_SIGNING_SECRET: # will be provided during deployment
+  _SLACK_ACKS_CHANNELID: # will be provided during deployment 
