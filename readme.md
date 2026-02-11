@@ -1,69 +1,13 @@
-peer-acks-v2 is a port of the original Cockroach Labs peer-acks https://github.com/andreimatei/peer-ack to Go, adding Slack integration
-
-# About
-
-Peer Acks V2 is an internal web app and Slack integration used at Cockroach Labs for employees to show appreciation
-to each other in the form of "peer acks".
-
-TODO screenshot
-
-# Development
-
-## Setting up local dev environment
-
-### start up local CRDB cluster
-
-
-
-### start up local server
-
-go build
-
-ngrok http -subdomain=peer-acks 8888
-
-https://peer-acks.ngrok.io/slack/events
-
-
-## Secrets configuration in local dev environment
-
-TODO local env setup
-
-## Secrets configuration on the server
-
-TODO note conn string and DB client cert
-
-## Building and pushing to k8s
-
-### Create Docker image
-```sh
-BRANCH=$(git symbolic-ref --short HEAD)-$USER
-SHA=$(git rev-parse --short HEAD)-$USER
-gcloud --project cockroach-dev-inf builds submit --substitutions=BRANCH_NAME=$BRANCH,SHORT_SHA=$SHA
-```
-
-### Deploying container image to k8s
-Update `peer-acks-v2:36` to the sha of the generated Docker image above.
-
-```sh
-# Upsert the configuration to GKE
-kubectl apply -f peer-acks-v2.yaml
-# Get a friendly view of the status.
-kubectl describe deployment h2hello
-kubectl describe service h2hello
-```
-
 # Peer Acks v2
 
-A system for peer recognition and acknowledgments, now powered by Google Cloud Functions.
+Peer Acks V2 is a port of the original Cockroach Labs peer-acks (https://github.com/andreimatei/peer-ack) to Go, adding Slack integration. It's an internal Slack integration and web app used at Cockroach Labs for employees to show appreciation to each other in the form of "peer acks".
+
+This application is powered by Google Cloud Functions.
 
 ## Architecture
 
-The application is now split into several serverless functions:
+The application is deployed as serverless functions on Google Cloud Functions:
 
-- `GetAcks`: Retrieves all acknowledgments
-- `CreateAck`: Creates a new acknowledgment
-- `GetMyAcks`: Retrieves acknowledgments for the current user
-- `GetAcksReport`: Generates a report of all acknowledgments
 - `SlackEvents`: Handles Slack events and challenges
 - `SlackSlashCommand`: Processes Slack slash commands
 
@@ -104,20 +48,44 @@ SLACK_SIGNING_SECRET=your_slack_signing_secret
 
 ## Security
 
-- All ack-related functions require authentication through Google Cloud IAP
 - Slack endpoints are authenticated using Slack's signing secret
 - Database credentials are managed through environment variables
 
-## Development
+## Local Development
 
-To run functions locally for development:
+To run and test functions locally:
 
 1. Install the Functions Framework:
    ```bash
    go install github.com/GoogleCloudPlatform/functions-framework-go/cmd/functions-framework@latest
    ```
 
-2. Run a function locally:
+2. Set up environment variables:
    ```bash
-   functions-framework --target=FUNCTION_NAME
+   export DATASOURCE=postgresql://user:password@host:port/dbname
+   export SLACK_ACKS_CHANNELID=your_slack_channel_id
+   export SLACK_SIGNING_SECRET=your_slack_signing_secret
+   export SLACK_OAUTH_TOKEN=your_slack_oauth_token
    ```
+
+3. Run a function locally:
+   ```bash
+   functions-framework --target=SlackEvents --port=8080
+   # or
+   functions-framework --target=SlackSlashCommand --port=8080
+   ```
+
+4. For local testing with Slack, use ngrok to create a public URL:
+   ```bash
+   ngrok http 8080
+   ```
+   Then configure your Slack app to use the ngrok URL (e.g., `https://your-id.ngrok.io`)
+
+## Testing
+
+Run the test suite:
+```bash
+./test.sh
+# or
+go test ./...
+```
