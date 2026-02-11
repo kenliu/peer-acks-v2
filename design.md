@@ -1,19 +1,15 @@
-# routes
-## /acks
+# Cloud Functions
 
-renders json `{acks:[<array of acks>]}`
+## SlackEvents
+Handles Slack events and challenges
+- POST requests from Slack event subscriptions
+- Responds to URL verification challenges
 
-## /myacks
-
-renders a form to submit new acks
-
-## /report
-
-renders a list of acks for a given time frame 
-
-# pages
-
-inforad.html --> /radiator
+## SlackSlashCommand  
+Processes Slack slash commands
+- POST requests from `/ack` slash command
+- Validates request signatures
+- Creates acks and posts to Slack channel
 
 # Verify
 * fix: sender_email should be not null in DB (need to migrate production DB)
@@ -22,13 +18,12 @@ inforad.html --> /radiator
 * build basic report page (all acks in last 7 days)
 
 # TODO
-* get email from IAP (or environment)
+* Consider adding health check endpoint for monitoring
 
 # PRE-DEPLOYMENT
-* Understand how K8S deployment works again
-* Set up DB credentials in k8s app
-* Set up cert for CRDB in k8s app
-* How to get app configuration into version control
+* Set up environment variables in Cloud Functions
+* Set up DB credentials as environment variables
+* Configure Slack app endpoints to point to deployed Cloud Functions
 
 
 ## Export and reload the current prod schema
@@ -37,13 +32,10 @@ inforad.html --> /radiator
 # Future enhancements
 * understand how tests work with golang
 * find a way to query all acks
-* extract middleware for authentication and logged out page
 * show user email in app
 * sentry integration https://github.com/gin-contrib/sentry
 * add usage metrics
 * filter empty acks
 * make sure acks are escaped properly
 * ack deletion
-* create liveness endpoint for k8s
-
 * inline editing of existing ack
