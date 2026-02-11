@@ -79,7 +79,9 @@ To run and test functions locally:
    ```bash
    ngrok http 8080
    ```
-   Then configure your Slack app to use the ngrok URL (e.g., `https://your-id.ngrok.io`)
+   Then configure your Slack app endpoints:
+   - For Slack Events API: `https://your-id.ngrok.io` (for SlackEvents function)
+   - For Slack Slash Commands: `https://your-id.ngrok.io` (for SlackSlashCommand function)
 
 ## Testing
 
