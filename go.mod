@@ -1,13 +1,12 @@
 module github.com/kenliu/peer-acks-v2
 
-go 1.21
-toolchain go1.24.1
+go 1.25
 
 require (
 	github.com/GoogleCloudPlatform/functions-framework-go v1.9.1
 	github.com/lib/pq v1.10.9
-	github.com/slack-go/slack v0.11.2
-	github.com/stretchr/testify v1.9.0
+	github.com/slack-go/slack v0.23.1
+	github.com/stretchr/testify v1.11.1
 )
 
 require (
@@ -15,7 +14,7 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.15.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
